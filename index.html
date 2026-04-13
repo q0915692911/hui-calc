@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c1017">
+<title>標會精算器 / Máy Tính Hụi</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Sans:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0c1017;--s1:#151d2b;--s2:#1c2638;--bd:#2d3a52;
+  --tx:#e4e9f2;--tx2:#7e8da6;
+  --ac:#f0b429;--ac2:#fcd34d;
+  --grn:#34d399;--red:#f87171;--blu:#60a5fa;
+}
+html{background:var(--bg)}
+body{
+  font-family:'Noto Sans TC','Noto Sans',sans-serif;
+  background:var(--bg);color:var(--tx);
+  min-height:100vh;min-height:100dvh;
+  padding:16px 12px 60px;
+  max-width:500px;margin:0 auto;
+  -webkit-text-size-adjust:100%;
+}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+input:focus{outline:none;border-color:var(--ac)!important}
+
+.card{background:var(--s1);border-radius:14px;border:1px solid var(--bd);padding:16px;margin-bottom:14px}
+.card.accent{border-color:var(--ac)}
+.stitle{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--ac)}
+.label{font-size:13px;color:var(--tx2);margin-bottom:2px}
+.hint{font-size:11px;color:var(--tx2)}
+.mono{font-family:'JetBrains Mono',monospace}
+
+.tapbtn{
+  width:48px;height:48px;border-radius:12px;
+  border:1px solid var(--bd);background:var(--s2);
+  color:var(--tx);font-size:22px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  user-select:none;-webkit-user-select:none;
+  transition:background .1s;
+}
+.tapbtn:active{background:var(--bd)}
+
+.numinput{
+  padding:12px 14px;border-radius:10px;
+  border:1px solid var(--bd);background:var(--s2);color:var(--tx);
+  font-family:'JetBrains Mono',monospace;
+  font-size:20px;font-weight:600;text-align:center;
+  width:100%;transition:border-color .15s;
+}
+.numinput.sm{font-size:15px;padding:10px 8px}
+.numinput:disabled{opacity:.3}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.chip{background:var(--s1);border-radius:12px;border:1px solid var(--bd);padding:12px 8px;text-align:center}
+.chip .cl{font-size:10px;color:var(--tx2);margin-bottom:4px}
+.chip .cv{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700}
+
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -12px;padding:0 12px}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
+thead tr{border-bottom:2px solid var(--bd)}
+th{padding:8px 4px;text-align:right;color:var(--tx2);font-weight:500;font-size:10px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+th:first-child{text-align:left}
+tbody tr{border-bottom:1px solid var(--bd);cursor:pointer;transition:background .1s}
+tbody tr:active,tbody tr.active{background:var(--s2)}
+td{padding:12px 4px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px}
+td:first-child{text-align:left;font-family:'Noto Sans TC','Noto Sans',sans-serif;font-weight:700}
+
+.bid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:10px}
+.bid-label{font-size:11px;margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+
+.cf-wrap{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.cf-bar-col{display:flex;flex-direction:column;align-items:center;min-width:44px;flex:1 0 44px}
+.cf-val{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;margin-bottom:3px}
+.cf-bar{width:20px;border-radius:4px}
+.cf-period{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--tx2);margin-top:3px}
+
+.explain{background:var(--s2);border-radius:12px;padding:14px;font-size:11px;color:var(--tx2);line-height:1.9}
+.explain strong{color:var(--ac)}
+
+.lang-btn{
+  background:var(--s2);border:1px solid var(--bd);border-radius:20px;
+  color:var(--tx);padding:8px 16px;font-size:14px;font-weight:600;cursor:pointer;
+}
+.lang-btn:active{background:var(--bd)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const L={
+  zh:{
+    title:"標會精算器",subtitle:"輸入人數、會款、每期標金，自動計算損益與實質利率",
+    settings:"基本設定",members:"會員人數（含會頭）",membersNote:"最少 3 人，無上限",
+    monthlyFee:"每人每月會款",bidsTitle:"每期標金",
+    bidsNote:"第 1 期（會頭）及最後 1 期自動為 0",
+    period:"期",host:"會頭",resultsTitle:"損益總表",
+    colMember:"成員",colPeriod:"得標期",colReceived:"拿到",colPaid:"總繳出",
+    colNet:"淨損益",colMonthly:"月利率",colAnnual:"年化利率",
+    tapHint:"👆 點擊任一行展開逐月明細",cfTitle:"逐月現金流",
+    cfNote:"正值＝收入，負值＝支出",
+    totalPool:"每月總額",duration:"會期總長",months:"個月",
+    maxBid:"最高標金",avgBid:"平均標金",
+    explain:"📖 計算說明",
+    explainText:"外標制：活會繳「會款 − 標金」，死會繳完整會款。得標者當月不繳，收走全部。月利率以 IRR（內部報酬率）計算。年化 = (1+月利率)¹² − 1。",
+    lang:"🇻🇳 Tiếng Việt"
+  },
+  vi:{
+    title:"Máy Tính Hụi",subtitle:"Nhập số người, tiền hụi, tiền khui → tự động tính lãi lỗ & lãi suất",
+    settings:"Cài đặt cơ bản",members:"Số thành viên (gồm chủ hụi)",membersNote:"Tối thiểu 3, không giới hạn",
+    monthlyFee:"Tiền hụi mỗi người / tháng",bidsTitle:"Tiền khui mỗi kỳ",
+    bidsNote:"Kỳ 1 (chủ hụi) và kỳ cuối tự động = 0",
+    period:"Kỳ",host:"Chủ hụi",resultsTitle:"Bảng lãi lỗ",
+    colMember:"Thành viên",colPeriod:"Kỳ khui",colReceived:"Nhận được",colPaid:"Tổng đóng",
+    colNet:"Lãi / Lỗ",colMonthly:"Lãi tháng",colAnnual:"Lãi năm",
+    tapHint:"👆 Nhấn vào hàng để xem chi tiết từng kỳ",cfTitle:"Dòng tiền từng kỳ",
+    cfNote:"Dương (+) = thu vào, Âm (−) = chi ra",
+    totalPool:"Tổng / tháng",duration:"Thời gian hụi",months:"tháng",
+    maxBid:"Khui cao nhất",avgBid:"Khui TB",
+    explain:"📖 Giải thích",
+    explainText:'Hụi ngoại: Hụi viên sống đóng "tiền hụi − tiền khui", hụi viên chết đóng đủ. Người khui không đóng tháng đó, nhận tất cả. Lãi tháng tính bằng IRR. Lãi năm = (1 + lãi tháng)¹² − 1.',
+    lang:"🇹🇼 中文"
+  }
+};
+
+let lang="zh",memberCount=5,monthlyFee=10000,bids=[0,2000,1500,1000,0],showDetail=null;
+const $=id=>document.getElementById(id);
+const fmt=v=>v===0?"0":(v<0?"-":"")+Math.abs(v).toLocaleString();
+const pct=v=>(v===null||!isFinite(v))?"—":(v*100).toFixed(1)+"%";
+
+function calcIRR(cf){
+  let rate=0.05;
+  for(let i=0;i<200;i++){
+    let npv=0,dnpv=0;
+    for(let t=0;t<cf.length;t++){
+      const d=Math.pow(1+rate,t);
+      npv+=cf[t]/d; dnpv-=t*cf[t]/(d*(1+rate));
+    }
+    if(Math.abs(npv)<1e-8)return rate;
+    const nr=rate-npv/dnpv;
+    if(!isFinite(nr))return null;
+    rate=nr;
+  }
+  return Math.abs(rate)<10?rate:null;
+}
+
+function compute(){
+  const t=L[lang],n=memberCount,fee=monthlyFee;
+  const people=[];
+  for(let i=0;i<n;i++) people.push({name:i===0?t.host:String.fromCharCode(64+i),winPeriod:i,cf:Array(n).fill(0),paid:0,recv:0});
+  for(let tp=0;tp<n;tp++){
+    const bid=bids[tp]||0; let pot=0;
+    for(let p=0;p<n;p++){
+      if(p===tp)continue;
+      const pay=p<tp?fee:fee-bid;
+      people[p].cf[tp]=-pay; people[p].paid+=pay; pot+=pay;
+    }
+    people[tp].cf[tp]=pot; people[tp].recv=pot;
+  }
+  return people.map(p=>{
+    const net=p.recv-p.paid;
+    let mr=null,ar=null;
+    if(net!==0){mr=calcIRR(p.cf);if(mr!==null)ar=Math.pow(1+mr,12)-1;}
+    return{...p,net,mr,ar};
+  });
+}
+
+function setMembers(v){
+  const n=Math.max(3,v); memberCount=n;
+  const nb=Array(n).fill(0);
+  for(let i=0;i<Math.min(bids.length,n);i++)nb[i]=bids[i];
+  nb[0]=0;nb[n-1]=0; bids=nb; showDetail=null; render();
+}
+
+function setBid(idx,v){
+  bids[idx]=Math.max(0,Math.min(monthlyFee,v)); render();
+}
+
+function render(){
+  const t=L[lang]; const results=compute();
+  const h=`
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button class="lang-btn" onclick="lang=lang==='zh'?'vi':'zh';render()">${t.lang}</button>
+  </div>
+  <div style="text-align:center;margin-bottom:24px">
+    <div class="mono" style="font-size:11px;color:var(--ac);letter-spacing:3px;margin-bottom:6px">ROSCA / HỤI CALCULATOR</div>
+    <h1 style="font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px">${t.title}</h1>
+    <p style="color:var(--tx2);font-size:12px;line-height:1.6;padding:0 8px">${t.subtitle}</p>
+  </div>
+
+  <div class="card">
+    <div class="stitle">${t.settings}</div>
+    <div style="margin-bottom:18px">
+      <div class="label">${t.members}</div>
+      <div class="hint">${t.membersNote}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <button class="tapbtn" onclick="setMembers(memberCount-1)">−</button>
+        <input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput" style="width:80px"
+          value="${memberCount}" onchange="setMembers(Number(this.value)||3)">
+        <button class="tapbtn" onclick="setMembers(memberCount+1)">+</button>
+      </div>
+    </div>
+    <div>
+      <div class="label">${t.monthlyFee}</div>
+      <div style="margin-top:6px">
+        <input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput" style="text-align:left"
+          value="${monthlyFee}" onchange="monthlyFee=Math.max(100,Number(this.value)||0);render()">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="stitle">${t.bidsTitle}</div>
+    <div class="hint" style="margin-bottom:14px">${t.bidsNote}</div>
+    <div class="bid-grid">
+      ${bids.map((b,i)=>{
+        const dis=i===0||i===memberCount-1;
+        return`<div>
+          <div class="bid-label" style="color:${dis?'var(--tx2)':'var(--tx)'}">${t.period} ${i+1} ${i===0?'('+t.host+')':'('+String.fromCharCode(64+i)+')'}</div>
+          <input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput sm"
+            value="${b}" ${dis?'disabled':''} onchange="setBid(${i},Number(this.value)||0)">
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="chip"><div class="cl">${t.totalPool}</div><div class="cv" style="color:var(--blu)">${fmt(monthlyFee*memberCount)}</div></div>
+    <div class="chip"><div class="cl">${t.duration}</div><div class="cv" style="color:var(--ac)">${memberCount} ${t.months}</div></div>
+    <div class="chip"><div class="cl">${t.maxBid}</div><div class="cv" style="color:var(--red)">${fmt(Math.max(...bids))}</div></div>
+    <div class="chip"><div class="cl">${t.avgBid}</div><div class="cv" style="color:var(--grn)">${fmt(Math.round(bids.reduce((a,b)=>a+b,0)/memberCount))}</div></div>
+  </div>
+
+  <div class="card">
+    <div class="stitle">${t.resultsTitle}</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          ${[t.colMember,t.colPeriod,t.colReceived,t.colPaid,t.colNet,t.colMonthly,t.colAnnual].map((c,i)=>`<th${i===0?' style="text-align:left"':''}>${c}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${results.map((r,i)=>{
+            const nc=r.net>0?'var(--grn)':r.net<0?'var(--red)':'var(--tx2)';
+            const arc=r.ar>0?'var(--grn)':r.ar<0?'var(--red)':'var(--tx2)';
+            return`<tr class="${showDetail===i?'active':''}" onclick="showDetail=${showDetail===i?'null':i};render()">
+              <td style="color:${i===0?'var(--ac)':'var(--tx)'}">${r.name}</td>
+              <td>${t.period} ${r.winPeriod+1}</td>
+              <td style="color:var(--blu)">${fmt(r.recv)}</td>
+              <td>${fmt(r.paid)}</td>
+              <td style="font-weight:700;color:${nc}">${r.net>0?'+':''}${fmt(r.net)}</td>
+              <td style="font-size:11px;color:var(--tx2)">${pct(r.mr)}</td>
+              <td style="font-size:11px;color:${arc}">${pct(r.ar)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="hint" style="margin-top:10px">${t.tapHint}</div>
+  </div>
+
+  ${showDetail!==null?`
+  <div class="card accent">
+    <div class="stitle">${results[showDetail].name} — ${t.cfTitle}</div>
+    <div class="hint" style="margin-bottom:14px">${t.cfNote}</div>
+    <div class="cf-wrap">
+      ${(()=>{
+        const cfs=results[showDetail].cf;
+        const mx=Math.max(...cfs.map(Math.abs),1);
+        return cfs.map((cf,tp)=>{
+          const bH=Math.round((Math.abs(cf)/mx)*56);
+          const w=cf>0;
+          return`<div class="cf-bar-col">
+            <div class="cf-val" style="color:${w?'var(--grn)':'var(--red)'}">${cf>0?'+':''}${fmt(cf)}</div>
+            <div class="cf-bar" style="height:${bH}px;background:linear-gradient(180deg,${w?'var(--grn),#059669':'var(--red),#b91c1c'});opacity:${cf===0?.15:.8}"></div>
+            <div class="cf-period">${tp+1}</div>
+          </div>`;
+        }).join('');
+      })()}
+    </div>
+  </div>`:''}
+
+  <div class="explain">
+    <strong>${t.explain}</strong><br>${t.explainText}
+  </div>`;
+
+  $('app').innerHTML=h;
+}
+
+render();
+</script>
+</body>
+</html>
