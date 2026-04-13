@@ -43,7 +43,6 @@ input:focus{outline:none;border-color:var(--ac)!important}
   color:var(--tx);font-size:22px;font-weight:700;
   cursor:pointer;display:flex;align-items:center;justify-content:center;
   user-select:none;-webkit-user-select:none;
-  transition:background .1s;
 }
 .tapbtn:active{background:var(--bd)}
 
@@ -52,7 +51,7 @@ input:focus{outline:none;border-color:var(--ac)!important}
   border:1px solid var(--bd);background:var(--s2);color:var(--tx);
   font-family:'JetBrains Mono',monospace;
   font-size:20px;font-weight:600;text-align:center;
-  width:100%;transition:border-color .15s;
+  width:100%;
 }
 .numinput.sm{font-size:15px;padding:10px 8px}
 .numinput:disabled{opacity:.3}
@@ -67,7 +66,7 @@ table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
 thead tr{border-bottom:2px solid var(--bd)}
 th{padding:8px 4px;text-align:right;color:var(--tx2);font-weight:500;font-size:10px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
 th:first-child{text-align:left}
-tbody tr{border-bottom:1px solid var(--bd);cursor:pointer;transition:background .1s}
+tbody tr{border-bottom:1px solid var(--bd);cursor:pointer}
 tbody tr:active,tbody tr.active{background:var(--s2)}
 td{padding:12px 4px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px}
 td:first-child{text-align:left;font-family:'Noto Sans TC','Noto Sans',sans-serif;font-weight:700}
@@ -89,12 +88,45 @@ td:first-child{text-align:left;font-family:'Noto Sans TC','Noto Sans',sans-serif
   color:var(--tx);padding:8px 16px;font-size:14px;font-weight:600;cursor:pointer;
 }
 .lang-btn:active{background:var(--bd)}
+
+.save-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--s2);border:1px solid var(--bd);border-radius:10px;
+  color:var(--tx);padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  width:100%;justify-content:center;margin-top:8px;
+}
+.save-btn:active{background:var(--bd)}
+.save-btn.green{border-color:var(--grn);color:var(--grn)}
+.save-btn.red{border-color:var(--red);color:var(--red)}
+
+.record-item{
+  background:var(--s2);border-radius:10px;padding:12px;margin-bottom:8px;
+  cursor:pointer;border:1px solid var(--bd);
+}
+.record-item:active{border-color:var(--ac)}
+.record-name{font-weight:700;font-size:14px;margin-bottom:4px}
+.record-info{font-size:11px;color:var(--tx2);font-family:'JetBrains Mono',monospace}
+.record-actions{display:flex;gap:8px;margin-top:8px}
+.record-actions button{
+  flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);
+  background:var(--s1);color:var(--tx);font-size:12px;font-weight:600;cursor:pointer;
+}
+.record-actions button:active{background:var(--bd)}
+.record-actions button.del{color:var(--red);border-color:var(--red)}
+
+.name-input{
+  width:100%;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--bd);background:var(--s2);color:var(--tx);
+  font-size:15px;margin-bottom:8px;
+}
+.name-input:focus{border-color:var(--ac)}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
-const L={
+// ── i18n ──
+var LANG = {
   zh:{
     title:"標會精算器",subtitle:"輸入人數、會款、每期標金，自動計算損益與實質利率",
     settings:"基本設定",members:"會員人數（含會頭）",membersNote:"最少 3 人，無上限",
@@ -109,189 +141,375 @@ const L={
     maxBid:"最高標金",avgBid:"平均標金",
     explain:"📖 計算說明",
     explainText:"外標制：活會繳「會款 − 標金」，死會繳完整會款。得標者當月不繳，收走全部。月利率以 IRR（內部報酬率）計算。年化 = (1+月利率)¹² − 1。",
-    lang:"🇻🇳 Tiếng Việt"
+    langBtn:"\uD83C\uDDFB\uD83C\uDDF3 Ti\u1EBFng Vi\u1EC7t",
+    records:"📋 計算紀錄",noRecords:"還沒有紀錄",
+    save:"💾 儲存目前計算",load:"載入",del:"刪除",
+    saveName:"輸入紀錄名稱...",saveConfirm:"確認儲存",cancel:"取消",
+    savedMsg:"✅ 已儲存！",autoSave:"⟳ 設定自動保存中"
   },
   vi:{
-    title:"Máy Tính Hụi",subtitle:"Nhập số người, tiền hụi, tiền khui → tự động tính lãi lỗ & lãi suất",
-    settings:"Cài đặt cơ bản",members:"Số thành viên (gồm chủ hụi)",membersNote:"Tối thiểu 3, không giới hạn",
-    monthlyFee:"Tiền hụi mỗi người / tháng",bidsTitle:"Tiền khui mỗi kỳ",
-    bidsNote:"Kỳ 1 (chủ hụi) và kỳ cuối tự động = 0",
-    period:"Kỳ",host:"Chủ hụi",resultsTitle:"Bảng lãi lỗ",
-    colMember:"Thành viên",colPeriod:"Kỳ khui",colReceived:"Nhận được",colPaid:"Tổng đóng",
-    colNet:"Lãi / Lỗ",colMonthly:"Lãi tháng",colAnnual:"Lãi năm",
-    tapHint:"👆 Nhấn vào hàng để xem chi tiết từng kỳ",cfTitle:"Dòng tiền từng kỳ",
-    cfNote:"Dương (+) = thu vào, Âm (−) = chi ra",
-    totalPool:"Tổng / tháng",duration:"Thời gian hụi",months:"tháng",
-    maxBid:"Khui cao nhất",avgBid:"Khui TB",
-    explain:"📖 Giải thích",
-    explainText:'Hụi ngoại: Hụi viên sống đóng "tiền hụi − tiền khui", hụi viên chết đóng đủ. Người khui không đóng tháng đó, nhận tất cả. Lãi tháng tính bằng IRR. Lãi năm = (1 + lãi tháng)¹² − 1.',
-    lang:"🇹🇼 中文"
+    title:"M\u00E1y T\u00EDnh H\u1EE5i",subtitle:"Nh\u1EADp s\u1ED1 ng\u01B0\u1EDDi, ti\u1EC1n h\u1EE5i, ti\u1EC1n khui \u2192 t\u1EF1 \u0111\u1ED9ng t\u00EDnh l\u00E3i l\u1ED7 & l\u00E3i su\u1EA5t",
+    settings:"C\u00E0i \u0111\u1EB7t c\u01A1 b\u1EA3n",members:"S\u1ED1 th\u00E0nh vi\u00EAn (g\u1ED3m ch\u1EE7 h\u1EE5i)",membersNote:"T\u1ED1i thi\u1EC3u 3, kh\u00F4ng gi\u1EDBi h\u1EA1n",
+    monthlyFee:"Ti\u1EC1n h\u1EE5i m\u1ED7i ng\u01B0\u1EDDi / th\u00E1ng",bidsTitle:"Ti\u1EC1n khui m\u1ED7i k\u1EF3",
+    bidsNote:"K\u1EF3 1 (ch\u1EE7 h\u1EE5i) v\u00E0 k\u1EF3 cu\u1ED1i t\u1EF1 \u0111\u1ED9ng = 0",
+    period:"K\u1EF3",host:"Ch\u1EE7 h\u1EE5i",resultsTitle:"B\u1EA3ng l\u00E3i l\u1ED7",
+    colMember:"Th\u00E0nh vi\u00EAn",colPeriod:"K\u1EF3 khui",colReceived:"Nh\u1EADn \u0111\u01B0\u1EE3c",colPaid:"T\u1ED5ng \u0111\u00F3ng",
+    colNet:"L\u00E3i / L\u1ED7",colMonthly:"L\u00E3i th\u00E1ng",colAnnual:"L\u00E3i n\u0103m",
+    tapHint:"\uD83D\uDC46 Nh\u1EA5n v\u00E0o h\u00E0ng \u0111\u1EC3 xem chi ti\u1EBFt t\u1EEBng k\u1EF3",cfTitle:"D\u00F2ng ti\u1EC1n t\u1EEBng k\u1EF3",
+    cfNote:"D\u01B0\u01A1ng (+) = thu v\u00E0o, \u00C2m (\u2212) = chi ra",
+    totalPool:"T\u1ED5ng / th\u00E1ng",duration:"Th\u1EDDi gian h\u1EE5i",months:"th\u00E1ng",
+    maxBid:"Khui cao nh\u1EA5t",avgBid:"Khui TB",
+    explain:"\uD83D\uDCD6 Gi\u1EA3i th\u00EDch",
+    explainText:'H\u1EE5i ngo\u1EA1i: H\u1EE5i vi\u00EAn s\u1ED1ng \u0111\u00F3ng "ti\u1EC1n h\u1EE5i \u2212 ti\u1EC1n khui", h\u1EE5i vi\u00EAn ch\u1EBFt \u0111\u00F3ng \u0111\u1EE7. Ng\u01B0\u1EDDi khui kh\u00F4ng \u0111\u00F3ng th\u00E1ng \u0111\u00F3, nh\u1EADn t\u1EA5t c\u1EA3. L\u00E3i th\u00E1ng t\u00EDnh b\u1EB1ng IRR. L\u00E3i n\u0103m = (1 + l\u00E3i th\u00E1ng)\u00B9\u00B2 \u2212 1.',
+    langBtn:"\uD83C\uDDF9\uD83C\uDDFC 中文",
+    records:"\uD83D\uDCCB L\u1ECBch s\u1EED t\u00EDnh",noRecords:"Ch\u01B0a c\u00F3 b\u1EA3n ghi n\u00E0o",
+    save:"\uD83D\uDCBE L\u01B0u t\u00EDnh to\u00E1n hi\u1EC7n t\u1EA1i",load:"T\u1EA3i",del:"X\u00F3a",
+    saveName:"Nh\u1EADp t\u00EAn b\u1EA3n ghi...",saveConfirm:"X\u00E1c nh\u1EADn l\u01B0u",cancel:"H\u1EE7y",
+    savedMsg:"\u2705 \u0110\u00E3 l\u01B0u!",autoSave:"\u27F3 T\u1EF1 \u0111\u1ED9ng l\u01B0u"
   }
 };
 
-let lang="zh",memberCount=5,monthlyFee=10000,bids=[0,2000,1500,1000,0],showDetail=null;
-const $=id=>document.getElementById(id);
-const fmt=v=>v===0?"0":(v<0?"-":"")+Math.abs(v).toLocaleString();
-const pct=v=>(v===null||!isFinite(v))?"—":(v*100).toFixed(1)+"%";
+// ── State ──
+var state = {
+  lang: 'zh',
+  memberCount: 5,
+  monthlyFee: 10000,
+  bids: [0, 2000, 1500, 1000, 0],
+  showDetail: null,
+  showSaveForm: false,
+  savedMsg: false
+};
 
-function calcIRR(cf){
-  let rate=0.05;
-  for(let i=0;i<200;i++){
-    let npv=0,dnpv=0;
-    for(let t=0;t<cf.length;t++){
-      const d=Math.pow(1+rate,t);
-      npv+=cf[t]/d; dnpv-=t*cf[t]/(d*(1+rate));
-    }
-    if(Math.abs(npv)<1e-8)return rate;
-    const nr=rate-npv/dnpv;
-    if(!isFinite(nr))return null;
-    rate=nr;
-  }
-  return Math.abs(rate)<10?rate:null;
+// ── localStorage ──
+function saveState() {
+  try {
+    localStorage.setItem('hui_state', JSON.stringify({
+      lang: state.lang,
+      memberCount: state.memberCount,
+      monthlyFee: state.monthlyFee,
+      bids: state.bids
+    }));
+  } catch(e) {}
 }
 
-function compute(){
-  const t=L[lang],n=memberCount,fee=monthlyFee;
-  const people=[];
-  for(let i=0;i<n;i++) people.push({name:i===0?t.host:String.fromCharCode(64+i),winPeriod:i,cf:Array(n).fill(0),paid:0,recv:0});
-  for(let tp=0;tp<n;tp++){
-    const bid=bids[tp]||0; let pot=0;
-    for(let p=0;p<n;p++){
-      if(p===tp)continue;
-      const pay=p<tp?fee:fee-bid;
-      people[p].cf[tp]=-pay; people[p].paid+=pay; pot+=pay;
+function loadState() {
+  try {
+    var s = JSON.parse(localStorage.getItem('hui_state'));
+    if (s) {
+      state.lang = s.lang || 'zh';
+      state.memberCount = s.memberCount || 5;
+      state.monthlyFee = s.monthlyFee || 10000;
+      state.bids = s.bids || [0, 2000, 1500, 1000, 0];
     }
-    people[tp].cf[tp]=pot; people[tp].recv=pot;
+  } catch(e) {}
+}
+
+function getRecords() {
+  try { return JSON.parse(localStorage.getItem('hui_records')) || []; }
+  catch(e) { return []; }
+}
+
+function saveRecord(name) {
+  var records = getRecords();
+  records.unshift({
+    id: Date.now(),
+    name: name,
+    date: new Date().toLocaleDateString(),
+    memberCount: state.memberCount,
+    monthlyFee: state.monthlyFee,
+    bids: state.bids.slice()
+  });
+  if (records.length > 20) records = records.slice(0, 20);
+  try { localStorage.setItem('hui_records', JSON.stringify(records)); } catch(e) {}
+}
+
+function deleteRecord(id) {
+  var records = getRecords().filter(function(r) { return r.id !== id; });
+  try { localStorage.setItem('hui_records', JSON.stringify(records)); } catch(e) {}
+}
+
+function loadRecord(id) {
+  var r = getRecords().find(function(r) { return r.id === id; });
+  if (r) {
+    state.memberCount = r.memberCount;
+    state.monthlyFee = r.monthlyFee;
+    state.bids = r.bids.slice();
+    state.showDetail = null;
   }
-  return people.map(p=>{
-    const net=p.recv-p.paid;
-    let mr=null,ar=null;
-    if(net!==0){mr=calcIRR(p.cf);if(mr!==null)ar=Math.pow(1+mr,12)-1;}
-    return{...p,net,mr,ar};
+  saveState();
+  render();
+}
+
+// ── IRR ──
+function calcIRR(cf) {
+  var rate = 0.05;
+  for (var i = 0; i < 200; i++) {
+    var npv = 0, dnpv = 0;
+    for (var t = 0; t < cf.length; t++) {
+      var d = Math.pow(1 + rate, t);
+      npv += cf[t] / d;
+      dnpv -= t * cf[t] / (d * (1 + rate));
+    }
+    if (Math.abs(npv) < 1e-8) return rate;
+    var nr = rate - npv / dnpv;
+    if (!isFinite(nr)) return null;
+    rate = nr;
+  }
+  return Math.abs(rate) < 10 ? rate : null;
+}
+
+// ── Helpers ──
+function fmt(v) { return v === 0 ? '0' : (v < 0 ? '-' : '') + Math.abs(v).toLocaleString(); }
+function pct(v) { return (v === null || !isFinite(v)) ? '\u2014' : (v * 100).toFixed(1) + '%'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Compute ──
+function compute() {
+  var t = LANG[state.lang];
+  var n = state.memberCount, fee = state.monthlyFee;
+  var people = [];
+  for (var i = 0; i < n; i++) {
+    people.push({ name: i === 0 ? t.host : String.fromCharCode(64 + i), winPeriod: i, cf: new Array(n).fill(0), paid: 0, recv: 0 });
+  }
+  for (var tp = 0; tp < n; tp++) {
+    var bid = state.bids[tp] || 0;
+    var pot = 0;
+    for (var p = 0; p < n; p++) {
+      if (p === tp) continue;
+      var pay = p < tp ? fee : fee - bid;
+      people[p].cf[tp] = -pay;
+      people[p].paid += pay;
+      pot += pay;
+    }
+    people[tp].cf[tp] = pot;
+    people[tp].recv = pot;
+  }
+  return people.map(function(p) {
+    var net = p.recv - p.paid;
+    var mr = null, ar = null;
+    if (net !== 0) { mr = calcIRR(p.cf); if (mr !== null) ar = Math.pow(1 + mr, 12) - 1; }
+    return { name: p.name, winPeriod: p.winPeriod, cf: p.cf, paid: p.paid, recv: p.recv, net: net, mr: mr, ar: ar };
   });
 }
 
-function setMembers(v){
-  const n=Math.max(3,v); memberCount=n;
-  const nb=Array(n).fill(0);
-  for(let i=0;i<Math.min(bids.length,n);i++)nb[i]=bids[i];
-  nb[0]=0;nb[n-1]=0; bids=nb; showDetail=null; render();
+// ── Actions (global) ──
+window.toggleLang = function() {
+  state.lang = state.lang === 'zh' ? 'vi' : 'zh';
+  saveState();
+  render();
+};
+
+window.setMembers = function(v) {
+  var n = Math.max(3, v);
+  state.memberCount = n;
+  var nb = new Array(n).fill(0);
+  for (var i = 0; i < Math.min(state.bids.length, n); i++) nb[i] = state.bids[i];
+  nb[0] = 0; nb[n - 1] = 0;
+  state.bids = nb;
+  state.showDetail = null;
+  saveState();
+  render();
+};
+
+window.setFee = function(v) {
+  state.monthlyFee = Math.max(100, v || 0);
+  saveState();
+  render();
+};
+
+window.setBid = function(idx, v) {
+  state.bids[idx] = Math.max(0, Math.min(state.monthlyFee, v));
+  saveState();
+  render();
+};
+
+window.toggleDetail = function(i) {
+  state.showDetail = state.showDetail === i ? null : i;
+  render();
+};
+
+window.showSave = function() {
+  state.showSaveForm = true;
+  render();
+  var el = document.getElementById('saveName');
+  if (el) el.focus();
+};
+
+window.doSave = function() {
+  var el = document.getElementById('saveName');
+  var name = el ? el.value.trim() : '';
+  if (!name) return;
+  saveRecord(name);
+  state.showSaveForm = false;
+  state.savedMsg = true;
+  render();
+  setTimeout(function() { state.savedMsg = false; render(); }, 2000);
+};
+
+window.cancelSave = function() {
+  state.showSaveForm = false;
+  render();
+};
+
+window.doLoad = function(id) {
+  loadRecord(id);
+};
+
+window.doDelete = function(id) {
+  deleteRecord(id);
+  render();
+};
+
+// ── Render ──
+function render() {
+  var t = LANG[state.lang];
+  var results = compute();
+  var records = getRecords();
+
+  var html = '';
+
+  // Lang toggle + auto-save indicator
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+  html += '<div class="hint">' + t.autoSave + '</div>';
+  html += '<button class="lang-btn" onclick="toggleLang()">' + t.langBtn + '</button>';
+  html += '</div>';
+
+  // Header
+  html += '<div style="text-align:center;margin-bottom:24px">';
+  html += '<div class="mono" style="font-size:11px;color:var(--ac);letter-spacing:3px;margin-bottom:6px">ROSCA / H\u1EE4I CALCULATOR</div>';
+  html += '<h1 style="font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px">' + t.title + '</h1>';
+  html += '<p style="color:var(--tx2);font-size:12px;line-height:1.6;padding:0 8px">' + t.subtitle + '</p>';
+  html += '</div>';
+
+  // Settings
+  html += '<div class="card"><div class="stitle">' + t.settings + '</div>';
+  html += '<div style="margin-bottom:18px">';
+  html += '<div class="label">' + t.members + '</div>';
+  html += '<div class="hint">' + t.membersNote + '</div>';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">';
+  html += '<button class="tapbtn" onclick="setMembers(state.memberCount-1)">\u2212</button>';
+  html += '<input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput" style="width:80px" value="' + state.memberCount + '" onchange="setMembers(Number(this.value)||3)">';
+  html += '<button class="tapbtn" onclick="setMembers(state.memberCount+1)">+</button>';
+  html += '</div></div>';
+  html += '<div><div class="label">' + t.monthlyFee + '</div>';
+  html += '<div style="margin-top:6px"><input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput" style="text-align:left" value="' + state.monthlyFee + '" onchange="setFee(Number(this.value))"></div>';
+  html += '</div></div>';
+
+  // Bids
+  html += '<div class="card"><div class="stitle">' + t.bidsTitle + '</div>';
+  html += '<div class="hint" style="margin-bottom:14px">' + t.bidsNote + '</div>';
+  html += '<div class="bid-grid">';
+  for (var i = 0; i < state.bids.length; i++) {
+    var dis = i === 0 || i === state.memberCount - 1;
+    html += '<div>';
+    html += '<div class="bid-label" style="color:' + (dis ? 'var(--tx2)' : 'var(--tx)') + '">';
+    html += t.period + ' ' + (i + 1) + ' ' + (i === 0 ? '(' + t.host + ')' : '(' + String.fromCharCode(64 + i) + ')');
+    html += '</div>';
+    html += '<input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput sm" value="' + state.bids[i] + '"' + (dis ? ' disabled' : '') + ' onchange="setBid(' + i + ',Number(this.value)||0)">';
+    html += '</div>';
+  }
+  html += '</div></div>';
+
+  // Chips
+  html += '<div class="grid2">';
+  html += '<div class="chip"><div class="cl">' + t.totalPool + '</div><div class="cv" style="color:var(--blu)">' + fmt(state.monthlyFee * state.memberCount) + '</div></div>';
+  html += '<div class="chip"><div class="cl">' + t.duration + '</div><div class="cv" style="color:var(--ac)">' + state.memberCount + ' ' + t.months + '</div></div>';
+  html += '<div class="chip"><div class="cl">' + t.maxBid + '</div><div class="cv" style="color:var(--red)">' + fmt(Math.max.apply(null, state.bids)) + '</div></div>';
+  var avg = Math.round(state.bids.reduce(function(a, b) { return a + b; }, 0) / state.memberCount);
+  html += '<div class="chip"><div class="cl">' + t.avgBid + '</div><div class="cv" style="color:var(--grn)">' + fmt(avg) + '</div></div>';
+  html += '</div>';
+
+  // Results
+  html += '<div class="card"><div class="stitle">' + t.resultsTitle + '</div>';
+  html += '<div class="tbl-wrap"><table><thead><tr>';
+  var cols = [t.colMember, t.colPeriod, t.colReceived, t.colPaid, t.colNet, t.colMonthly, t.colAnnual];
+  for (var c = 0; c < cols.length; c++) {
+    html += '<th' + (c === 0 ? ' style="text-align:left"' : '') + '>' + cols[c] + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  for (var ri = 0; ri < results.length; ri++) {
+    var r = results[ri];
+    var nc = r.net > 0 ? 'var(--grn)' : r.net < 0 ? 'var(--red)' : 'var(--tx2)';
+    var arc = r.ar > 0 ? 'var(--grn)' : r.ar < 0 ? 'var(--red)' : 'var(--tx2)';
+    html += '<tr class="' + (state.showDetail === ri ? 'active' : '') + '" onclick="toggleDetail(' + ri + ')">';
+    html += '<td style="color:' + (ri === 0 ? 'var(--ac)' : 'var(--tx)') + '">' + r.name + '</td>';
+    html += '<td>' + t.period + ' ' + (r.winPeriod + 1) + '</td>';
+    html += '<td style="color:var(--blu)">' + fmt(r.recv) + '</td>';
+    html += '<td>' + fmt(r.paid) + '</td>';
+    html += '<td style="font-weight:700;color:' + nc + '">' + (r.net > 0 ? '+' : '') + fmt(r.net) + '</td>';
+    html += '<td style="font-size:11px;color:var(--tx2)">' + pct(r.mr) + '</td>';
+    html += '<td style="font-size:11px;color:' + arc + '">' + pct(r.ar) + '</td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  html += '<div class="hint" style="margin-top:10px">' + t.tapHint + '</div></div>';
+
+  // Cash flow detail
+  if (state.showDetail !== null && state.showDetail < results.length) {
+    var dr = results[state.showDetail];
+    html += '<div class="card accent"><div class="stitle">' + dr.name + ' \u2014 ' + t.cfTitle + '</div>';
+    html += '<div class="hint" style="margin-bottom:14px">' + t.cfNote + '</div>';
+    html += '<div class="cf-wrap">';
+    var mx = 1;
+    for (var ci = 0; ci < dr.cf.length; ci++) { var a = Math.abs(dr.cf[ci]); if (a > mx) mx = a; }
+    for (var ci = 0; ci < dr.cf.length; ci++) {
+      var cf = dr.cf[ci];
+      var bH = Math.round((Math.abs(cf) / mx) * 56);
+      var w = cf > 0;
+      html += '<div class="cf-bar-col">';
+      html += '<div class="cf-val" style="color:' + (w ? 'var(--grn)' : 'var(--red)') + '">' + (cf > 0 ? '+' : '') + fmt(cf) + '</div>';
+      html += '<div class="cf-bar" style="height:' + bH + 'px;background:linear-gradient(180deg,' + (w ? 'var(--grn),#059669' : 'var(--red),#b91c1c') + ');opacity:' + (cf === 0 ? 0.15 : 0.8) + '"></div>';
+      html += '<div class="cf-period">' + (ci + 1) + '</div>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  // Save section
+  html += '<div class="card">';
+  html += '<div class="stitle">' + t.records + '</div>';
+
+  if (state.savedMsg) {
+    html += '<div style="text-align:center;padding:12px;color:var(--grn);font-weight:700;font-size:15px">' + t.savedMsg + '</div>';
+  }
+
+  if (state.showSaveForm) {
+    html += '<input type="text" id="saveName" class="name-input" placeholder="' + esc(t.saveName) + '" onkeydown="if(event.key===\'Enter\')doSave()">';
+    html += '<div style="display:flex;gap:8px">';
+    html += '<button class="save-btn green" onclick="doSave()" style="flex:1">' + t.saveConfirm + '</button>';
+    html += '<button class="save-btn" onclick="cancelSave()" style="flex:1">' + t.cancel + '</button>';
+    html += '</div>';
+  } else {
+    html += '<button class="save-btn green" onclick="showSave()">' + t.save + '</button>';
+  }
+
+  // Records list
+  if (records.length > 0) {
+    html += '<div style="margin-top:14px">';
+    for (var ri = 0; ri < records.length; ri++) {
+      var rec = records[ri];
+      html += '<div class="record-item">';
+      html += '<div class="record-name">' + esc(rec.name) + '</div>';
+      html += '<div class="record-info">' + rec.memberCount + ' ' + t.members.split('(')[0].trim() + ' \u00B7 ' + fmt(rec.monthlyFee) + ' / ' + t.months + ' \u00B7 ' + rec.date + '</div>';
+      html += '<div class="record-actions">';
+      html += '<button onclick="doLoad(' + rec.id + ')">' + t.load + '</button>';
+      html += '<button class="del" onclick="doDelete(' + rec.id + ')">' + t.del + '</button>';
+      html += '</div></div>';
+    }
+    html += '</div>';
+  } else {
+    html += '<div style="text-align:center;padding:16px 0;color:var(--tx2);font-size:13px">' + t.noRecords + '</div>';
+  }
+  html += '</div>';
+
+  // Explanation
+  html += '<div class="explain"><strong>' + t.explain + '</strong><br>' + t.explainText + '</div>';
+
+  document.getElementById('app').innerHTML = html;
 }
 
-function setBid(idx,v){
-  bids[idx]=Math.max(0,Math.min(monthlyFee,v)); render();
-}
-
-function render(){
-  const t=L[lang]; const results=compute();
-  const h=`
-  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-    <button class="lang-btn" onclick="lang=lang==='zh'?'vi':'zh';render()">${t.lang}</button>
-  </div>
-  <div style="text-align:center;margin-bottom:24px">
-    <div class="mono" style="font-size:11px;color:var(--ac);letter-spacing:3px;margin-bottom:6px">ROSCA / HỤI CALCULATOR</div>
-    <h1 style="font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px">${t.title}</h1>
-    <p style="color:var(--tx2);font-size:12px;line-height:1.6;padding:0 8px">${t.subtitle}</p>
-  </div>
-
-  <div class="card">
-    <div class="stitle">${t.settings}</div>
-    <div style="margin-bottom:18px">
-      <div class="label">${t.members}</div>
-      <div class="hint">${t.membersNote}</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-        <button class="tapbtn" onclick="setMembers(memberCount-1)">−</button>
-        <input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput" style="width:80px"
-          value="${memberCount}" onchange="setMembers(Number(this.value)||3)">
-        <button class="tapbtn" onclick="setMembers(memberCount+1)">+</button>
-      </div>
-    </div>
-    <div>
-      <div class="label">${t.monthlyFee}</div>
-      <div style="margin-top:6px">
-        <input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput" style="text-align:left"
-          value="${monthlyFee}" onchange="monthlyFee=Math.max(100,Number(this.value)||0);render()">
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="stitle">${t.bidsTitle}</div>
-    <div class="hint" style="margin-bottom:14px">${t.bidsNote}</div>
-    <div class="bid-grid">
-      ${bids.map((b,i)=>{
-        const dis=i===0||i===memberCount-1;
-        return`<div>
-          <div class="bid-label" style="color:${dis?'var(--tx2)':'var(--tx)'}">${t.period} ${i+1} ${i===0?'('+t.host+')':'('+String.fromCharCode(64+i)+')'}</div>
-          <input type="number" inputmode="numeric" pattern="[0-9]*" class="numinput sm"
-            value="${b}" ${dis?'disabled':''} onchange="setBid(${i},Number(this.value)||0)">
-        </div>`;
-      }).join('')}
-    </div>
-  </div>
-
-  <div class="grid2">
-    <div class="chip"><div class="cl">${t.totalPool}</div><div class="cv" style="color:var(--blu)">${fmt(monthlyFee*memberCount)}</div></div>
-    <div class="chip"><div class="cl">${t.duration}</div><div class="cv" style="color:var(--ac)">${memberCount} ${t.months}</div></div>
-    <div class="chip"><div class="cl">${t.maxBid}</div><div class="cv" style="color:var(--red)">${fmt(Math.max(...bids))}</div></div>
-    <div class="chip"><div class="cl">${t.avgBid}</div><div class="cv" style="color:var(--grn)">${fmt(Math.round(bids.reduce((a,b)=>a+b,0)/memberCount))}</div></div>
-  </div>
-
-  <div class="card">
-    <div class="stitle">${t.resultsTitle}</div>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr>
-          ${[t.colMember,t.colPeriod,t.colReceived,t.colPaid,t.colNet,t.colMonthly,t.colAnnual].map((c,i)=>`<th${i===0?' style="text-align:left"':''}>${c}</th>`).join('')}
-        </tr></thead>
-        <tbody>
-          ${results.map((r,i)=>{
-            const nc=r.net>0?'var(--grn)':r.net<0?'var(--red)':'var(--tx2)';
-            const arc=r.ar>0?'var(--grn)':r.ar<0?'var(--red)':'var(--tx2)';
-            return`<tr class="${showDetail===i?'active':''}" onclick="showDetail=${showDetail===i?'null':i};render()">
-              <td style="color:${i===0?'var(--ac)':'var(--tx)'}">${r.name}</td>
-              <td>${t.period} ${r.winPeriod+1}</td>
-              <td style="color:var(--blu)">${fmt(r.recv)}</td>
-              <td>${fmt(r.paid)}</td>
-              <td style="font-weight:700;color:${nc}">${r.net>0?'+':''}${fmt(r.net)}</td>
-              <td style="font-size:11px;color:var(--tx2)">${pct(r.mr)}</td>
-              <td style="font-size:11px;color:${arc}">${pct(r.ar)}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div class="hint" style="margin-top:10px">${t.tapHint}</div>
-  </div>
-
-  ${showDetail!==null?`
-  <div class="card accent">
-    <div class="stitle">${results[showDetail].name} — ${t.cfTitle}</div>
-    <div class="hint" style="margin-bottom:14px">${t.cfNote}</div>
-    <div class="cf-wrap">
-      ${(()=>{
-        const cfs=results[showDetail].cf;
-        const mx=Math.max(...cfs.map(Math.abs),1);
-        return cfs.map((cf,tp)=>{
-          const bH=Math.round((Math.abs(cf)/mx)*56);
-          const w=cf>0;
-          return`<div class="cf-bar-col">
-            <div class="cf-val" style="color:${w?'var(--grn)':'var(--red)'}">${cf>0?'+':''}${fmt(cf)}</div>
-            <div class="cf-bar" style="height:${bH}px;background:linear-gradient(180deg,${w?'var(--grn),#059669':'var(--red),#b91c1c'});opacity:${cf===0?.15:.8}"></div>
-            <div class="cf-period">${tp+1}</div>
-          </div>`;
-        }).join('');
-      })()}
-    </div>
-  </div>`:''}
-
-  <div class="explain">
-    <strong>${t.explain}</strong><br>${t.explainText}
-  </div>`;
-
-  $('app').innerHTML=h;
-}
-
+// ── Init ──
+loadState();
 render();
 </script>
 </body>
